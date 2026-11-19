@@ -1,81 +1,56 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  fetchCurrentUser,
-  login,
-  logout,
-  type CurrentUser,
-} from "@/lib/auth-api"
-import { refreshAccessToken } from "./lib/api-client"
+import { Navigate, Route, Routes } from "react-router"
+import { useCurrentUser } from "@/lib/use-current-user"
+import { HomePage } from "@/pages/home-page"
+import { LoginPage } from "@/pages/login-page"
 
-export function App() {
-  const [userName, setUserName] = useState("")
-  const [password, setPassword] = useState("")
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [isCheckingSession, setIsCheckingSession] = useState(true)
+function RequireLogin({ children }: { children: React.ReactNode }) {
+  const { data: user, isPending } = useCurrentUser()
 
-  useEffect(() => {
-    async function restoreSession() {
-      if (await refreshAccessToken()) {
-        setUser(await fetchCurrentUser())
-      }
-      setIsCheckingSession(false)
-    }
-    restoreSession()
-  }, [])
-
-  async function handleSubmit(
-    event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>
-  ) {
-    event.preventDefault()
-    setErrorMessage(null)
-    try {
-      await login(userName, password)
-      setUser(await fetchCurrentUser())
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error")
-    }
+  if (isPending) {
+    return null
   }
 
-  async function handleLogout() {
-    await logout()
-    setUser(null)
+  if (!user) {
+    return <Navigate to="/login" replace />
   }
 
-  if (isCheckingSession) {
+  return children
+}
+
+function RedirectIfLoggedIn({ children }: { children: React.ReactNode }) {
+  const { data: user, isPending } = useCurrentUser()
+
+  if (isPending) {
     return null
   }
 
   if (user) {
-    return (
-      <div className="flex flex-col items-start gap-3 p-6">
-        <p>
-          Logged in as {user.userName} ({user.role})
-        </p>
-        <Button onClick={handleLogout}>Log out</Button>
-      </div>
-    )
+    return <Navigate to="/" replace />
   }
 
+  return children
+}
+
+export function App() {
   return (
-    <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-3 p-6">
-      <input
-        value={userName}
-        onChange={(event) => setUserName(event.target.value)}
-        placeholder="Username"
-        className="rounded border px-3 py-2"
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <RedirectIfLoggedIn>
+            <LoginPage />
+          </RedirectIfLoggedIn>
+        }
       />
-      <input
-        type="password"
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        placeholder="Password"
-        className="rounded border px-3 py-2"
+      <Route
+        path="/"
+        element={
+          <RequireLogin>
+            <HomePage />
+          </RequireLogin>
+        }
       />
-      <Button type="submit">Log in</Button>
-      {errorMessage && <p className="text-destructive">{errorMessage}</p>}
-    </form>
+    </Routes>
   )
 }
 
