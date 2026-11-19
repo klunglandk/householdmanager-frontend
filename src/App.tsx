@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from "react-router"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { HomePage } from "@/pages/home-page"
 import { LoginPage } from "@/pages/login-page"
+import { AppLayout } from "@/components/app-layout"
+import { WeeklyPlannerPage } from "./pages/weekly-planner-page"
 
 function RequireLogin({ children }: { children: React.ReactNode }) {
   const { data: user, isPending } = useCurrentUser()
@@ -43,13 +45,15 @@ export function App() {
         }
       />
       <Route
-        path="/"
         element={
           <RequireLogin>
-            <HomePage />
+            <AppLayout />
           </RequireLogin>
         }
-      />
+      >
+        <Route index element={<HomePage />} />
+      </Route>
+      <Route path="weekly-planner" element={<WeeklyPlannerPage />} />
     </Routes>
   )
 }
